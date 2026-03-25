@@ -19,6 +19,11 @@ spec:
         - name: m3-slr-infer
           image: ghcr.io/doduc12306/m3-slr:latest
           imagePullPolicy: Always
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - mkdir -p /app/model; if [ -f /app/best_checkpoints.pth ]; then ln -sf /app/best_checkpoints.pth /app/model/best_checkpoints.pth; fi; uvicorn app.server:app --host 0.0.0.0 --port 8000
           ports:
             - containerPort: 8000
           env:

@@ -25,7 +25,7 @@ training:
   test: true
   device: cpu
   pretrained: true
-  pretrained_model: /app/model/best_checkpoints.pth
+  pretrained_model: /app/best_checkpoints.pth
   random_seed: 42
   batch_size: 1
   criterion: MyCustomLoss
