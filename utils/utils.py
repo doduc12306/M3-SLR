@@ -13,7 +13,7 @@ from pytorch_lightning.utilities.migration import pl_legacy_patch
 def load_criterion(train_cfg):
     criterion = None
     if train_cfg['criterion'] == "MyCustomLoss":
-        criterion = MyCustomLoss(label_smoothing=train_cfg['label_smoothing'],weight_local=train_cfg.get('weight_local',1))
+        criterion = MyCustomLoss(label_smoothing=train_cfg['label_smoothing'])
     if train_cfg['criterion'] == "MultipleMSELoss":
         criterion = MultipleMSELoss()
     assert criterion is not None

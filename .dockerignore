@@ -1,0 +1,13 @@
+.git
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.log
+log/
+out-img/
+checkpoints/
+images/
+
+# Keep best_checkpoints.pth inside build context for serving

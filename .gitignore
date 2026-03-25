@@ -1,0 +1,28 @@
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Logs and local outputs
+*.log
+log/
+out-img/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/

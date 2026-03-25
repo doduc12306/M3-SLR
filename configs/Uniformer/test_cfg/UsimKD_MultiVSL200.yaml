@@ -1,7 +1,8 @@
 task: ISLR
 data:
-  model_name: UsimKD
-  base_url: /home/ibmelab/Documents/GG/VSLRecognition/vsl
+  model_name: UFOneView
+  # Đường dẫn dữ liệu trên máy bạn
+  base_url: "C:/Users/Duc Do/Downloads/M3-SLR/data/vsl"
   dataset_name: VN_SIGN
   temporal_stride: 2
   num_output_frames: 16
@@ -18,22 +19,23 @@ data:
     NORM_STD_IMGNET: [0.229, 0.224, 0.225]
   SHOULDER_DIST_EPSILON: 1.2
   WRIST_DELTA: 0.15
-  label_folder:  label1-200/label/labelThreeView
+  label_folder: label1-200/label/labelThreeView
   data_type: labels
+
 training:
   test: true
   label_smoothing: 0
-  device: cuda:0
+  device: cpu
   overwrite: true
   log_freq: 1
-  experiment_name: "UsimKD MultiVSL200 center from MaxFlow MaskFeat 0.4 (Testing)"
+  experiment_name: "UsimKD MultiVSL200 (Testing on CPU)"
   model_dir: results/vn_sign
   random_seed: 42
   shuffle: True
-  num_workers: 12
+  num_workers: 0
   prefetch_factor: 2
-  batch_size: 1 #to-debug!
-  total_epoch: 300 #to-debug!
+  batch_size: 1
+  total_epoch: 300
   learning_rate: 0.0001
   save_checkpoints: true
   scheduler_factor: 0.1
@@ -47,7 +49,8 @@ training:
   top_k: 5
   print_stats: true
   pretrained: true
-  pretrained_model: None
+  # Checkpoint chính cho toàn bộ hệ thống
+  pretrained_model: "C:/Users/Duc Do/Downloads/M3-SLR/best_checkpoints.pth"
   lr_step_size: 10
   gamma: 0.8
   num_accumulation_steps: 4
@@ -65,5 +68,7 @@ training:
 model:
   num_classes: 199
   embed_size: 512
-  pretraiend: False
-  pretrained_name: None
+  # Quan trọng: Giữ nguyên lỗi chính tả 'pretraiend' của tác giả để code nhận diện
+  pretraiend: True
+  # Giải quyết lỗi FileNotFoundError: '' bằng cách trỏ đường dẫn Teacher vào đây
+  pretrained_name: "C:/Users/Duc Do/Downloads/M3-SLR/best_checkpoints.pth"

@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: m3-slr-infer
+  namespace: m3-slr
+  labels:
+    app: m3-slr-infer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: m3-slr-infer
+  template:
+    metadata:
+      labels:
+        app: m3-slr-infer
+    spec:
+      containers:
+        - name: m3-slr-infer
+          image: ghcr.io/doduc12306/m3-slr:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: MODEL_CONFIG
+              value: configs/deploy/UFOneView_MultiVSL200_server.yaml
+            - name: LOOKUP_TABLE
+              value: data/MultiVSL200/lookuptable.csv
+            - name: MODEL_DEVICE
+              value: cpu
+            - name: DEFAULT_TOP_K
+              value: "5"
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 20

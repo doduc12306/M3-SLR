@@ -1,6 +1,8 @@
 import argparse
+import sys
 from utils.misc import load_config
 from dataset.dataloader import build_dataloader
+from dataset.videoLoader import get_selected_indexs, pad_index
 import random
 import os
 import numpy as np
@@ -8,15 +10,78 @@ import torch
 import logging
 from pathlib import Path
 from utils.utils import load_criterion,load_lr_scheduler,load_optimizer,load_model
+from utils.video_augmentation import Compose, Resize, ToFloatTensor, PermuteImage, Normalize
+from decord import VideoReader
 from trainer.trainer import Trainer
 import wandb
 from sklearn.model_selection import KFold
 import pandas as pd
 
-wandb.login(
-    key=''
-)
+# Optional login for online tracking only.
+# By default this is skipped to avoid interactive prompts during local runs.
+if os.environ.get("ENABLE_WANDB_LOGIN", "0") == "1":
+    wandb.login(key=os.environ.get("WANDB_API_KEY", ""))
 
+
+def build_eval_transform(cfg):
+    return Compose(
+        Resize(cfg['data']['vid_transform']['IMAGE_SIZE']),
+        ToFloatTensor(),
+        PermuteImage(),
+        Normalize(
+            cfg['data']['vid_transform']['NORM_MEAN_IMGNET'],
+            cfg['data']['vid_transform']['NORM_STD_IMGNET']
+        )
+    )
+
+
+def run_single_video_inference(model, cfg, video_path, device, top_k=5, lookup_table_path=None):
+    video_path = Path(video_path)
+    if not video_path.exists():
+        raise FileNotFoundError(f"Video path does not exist: {video_path}")
+
+    vr = VideoReader(str(video_path), width=320, height=256)
+    vlen = len(vr)
+
+    index_setting = cfg['data']['transform_cfg'].get('index_setting', ['segment', 'pad', 'segment', 'pad'])
+    selected_index, pad = get_selected_indexs(
+        vlen,
+        cfg['data']['num_output_frames'],
+        is_train=False,
+        setting=index_setting,
+        temporal_stride=cfg['data']['temporal_stride']
+    )
+    if pad is not None:
+        selected_index = pad_index(selected_index, pad).tolist()
+
+    transform = build_eval_transform(cfg)
+    frames = vr.get_batch(selected_index).asnumpy()
+    clip = [transform(frame) for frame in frames]
+    clip = torch.stack(clip, dim=0).permute(1, 0, 2, 3).unsqueeze(0).to(device)
+
+    label_map = {}
+    if lookup_table_path:
+        lut_path = Path(lookup_table_path)
+        if lut_path.exists():
+            df = pd.read_csv(lut_path)
+            if {'id_label_in_documents', 'name'}.issubset(df.columns):
+                for _, row in df.iterrows():
+                    label_map[int(row['id_label_in_documents'])] = str(row['name'])
+
+    model.eval()
+    with torch.no_grad():
+        outputs = model(clip=clip)
+        logits = outputs['logits']
+        probs = torch.softmax(logits, dim=-1)
+        k = min(top_k, probs.shape[-1])
+        top_probs, top_indices = torch.topk(probs[0], k=k)
+
+    print("\nSingle-video inference results:")
+    print(f"Video: {video_path}")
+    for rank, (idx, prob) in enumerate(zip(top_indices.tolist(), top_probs.tolist()), start=1):
+        # Lookup table in this repo is typically 1-based while model indices are 0-based.
+        label_name = label_map.get(idx + 1, label_map.get(idx, "N/A"))
+        print(f"Top-{rank}: class_id={idx} prob={prob:.4f} label={label_name}")
 
 
 def seed_everything(seed):
@@ -35,6 +100,29 @@ if __name__ == "__main__":
         default="configs/vtn_att_poseflow/vtn_att_poseflow_autsl.yaml",
         type=str,
         help="Training configuration file (yaml).",
+    )
+    parser.add_argument(
+        "--load-only",
+        action="store_true",
+        help="Load model and pretrained checkpoint only, then exit without building datasets/dataloaders.",
+    )
+    parser.add_argument(
+        "--infer-video",
+        type=str,
+        default=None,
+        help="Path to a single video for inference. When set, dataset loaders are skipped.",
+    )
+    parser.add_argument(
+        "--infer-topk",
+        type=int,
+        default=5,
+        help="Top-k predictions to print in single-video inference mode.",
+    )
+    parser.add_argument(
+        "--lookup-table",
+        type=str,
+        default="data/MultiVSL200/lookuptable.csv",
+        help="CSV file to map predicted class IDs to human-readable labels.",
     )
     args = parser.parse_args()
     
@@ -159,6 +247,24 @@ if __name__ == "__main__":
                 
         model = load_model(cfg)
         model.to(device)
+
+        if args.load_only:
+            print("Load-only mode: model and pretrained checkpoint loaded successfully. Exiting without dataset.")
+            logging.info("Load-only mode: model and pretrained checkpoint loaded successfully. Exiting without dataset.")
+            wandb.run.finish()
+            sys.exit(0)
+
+        if args.infer_video is not None:
+            run_single_video_inference(
+                model=model,
+                cfg=cfg,
+                video_path=args.infer_video,
+                device=device,
+                top_k=args.infer_topk,
+                lookup_table_path=args.lookup_table,
+            )
+            wandb.run.finish()
+            sys.exit(0)
         
         criterion = load_criterion(cfg['training'])
         optimizer = load_optimizer(cfg['training'],model,criterion)

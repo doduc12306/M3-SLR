@@ -61,15 +61,20 @@ def build_dataloader(cfg, split, is_train=True, model = None,labels = None):
     if cfg['data']['model_name'] == 'MaskUFOneView':
         collate_func = maskufoneview_collate_fn_
 
-    dataloader = torch.utils.data.DataLoader(dataset,
-                                            collate_fn = collate_func,
-                                            batch_size = cfg['training']['batch_size'],
-                                            num_workers = cfg['training'].get('num_workers',2),                                            
-                                            shuffle = is_train,
-                                            # prefetch_factor = cfg['training'].get('prefetch_factor',2),
-                                            pin_memory=True,
-                                            persistent_workers =  True,
-                                            # sampler = sampler
-                                            )
+    num_workers = cfg['training'].get('num_workers', 2)
+    dataloader_kwargs = {
+        'collate_fn': collate_func,
+        'batch_size': cfg['training']['batch_size'],
+        'num_workers': num_workers,
+        'shuffle': is_train,
+        'pin_memory': True,
+    }
+
+    # Worker-specific options are only valid when using multiprocessing workers.
+    if num_workers > 0:
+        dataloader_kwargs['persistent_workers'] = True
+        dataloader_kwargs['prefetch_factor'] = cfg['training'].get('prefetch_factor', 2)
+
+    dataloader = torch.utils.data.DataLoader(dataset, **dataloader_kwargs)
 
     return dataloader

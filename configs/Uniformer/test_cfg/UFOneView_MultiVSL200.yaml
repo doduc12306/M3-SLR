@@ -1,8 +1,9 @@
 task: ISLR
 data:
   model_name: UFOneView
-  base_url: /home/ibmelab/Documents/GG/VSLRecognition/vsl
-  dataset_name: VN_SIGN
+  # Đã sửa sang đường dẫn thực tế trên máy Windows của bạn
+  base_url: "C:/Users/Duc Do/Downloads/M3-SLR/data"
+  dataset_name: MultiVSL200
   temporal_stride: 3
   num_output_frames: 16
   crop_two_hand: true
@@ -18,10 +19,12 @@ data:
     NORM_STD_IMGNET: [0.229, 0.224, 0.225]
   SHOULDER_DIST_EPSILON: 1.2
   WRIST_DELTA: 0.15
-  label_folder: label1-200/label/labelCenter
-  # label_folder: label1-200/label/labelLeft
-  # label_folder: label1-200/label/labelRight
+  # MultiVSL200 labels in this workspace
+  label_folder: MultiVSL200/labelCenter
+  # If videos are placed under data/MultiVSL200_videos
+  video_folder: MultiVSL200_videos
   data_type: labels
+
 training:
   test: true
   coefficient:
@@ -29,17 +32,19 @@ training:
     cts_x: 1
     cosine_x: 1
   label_smoothing: 0
-  device: cuda:0
+  # Ép chạy trên CPU
+  device: cpu
   overwrite: true
   log_freq: 1
-  experiment_name: "UFOneView MultiVLS200 from MaxFlow MaskUFOneView MultiVLS200 center (Testing)"
+  experiment_name: "UFOneView Testing on CPU (OneView Mode)"
   model_dir: results/vtn_att_poseflow/vsl
   random_seed: 42
   shuffle: True
-  num_workers: 12
+  # QUAN TRỌNG: Để 0 trên Windows để tránh lỗi BrokenPipe
+  num_workers: 0
   prefetch_factor: 2
-  batch_size: 1 #to-debug!
-  total_epoch: 300 #to-debug!
+  batch_size: 1
+  total_epoch: 300
   learning_rate: 0.0001
   save_checkpoints: true
   scheduler_factor: 0.1
@@ -53,7 +58,8 @@ training:
   top_k: 5
   print_stats: true
   pretrained: true
-  pretrained_model: None
+  # Trỏ thẳng đến file checkpoint bạn đang có
+  pretrained_model: "C:/Users/Duc Do/Downloads/M3-SLR/best_checkpoints.pth"
   lr_step_size: 10
   gamma: 0.8
   num_accumulation_steps: 4
@@ -71,4 +77,5 @@ training:
 model:
   num_classes: 199
   maskFeat: False
+  # UFOneView không cần chưng cất nên tắt phần pretrain model lằng nhằng này
   pretraiend: False

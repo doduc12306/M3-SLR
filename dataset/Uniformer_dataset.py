@@ -11,12 +11,24 @@ from utils.video_augmentation import *
 class UFOneView_Dataset(Dataset):
     def __init__(self, base_url,split,dataset_cfg,train_labels = None,**kwargs):
         if train_labels is None:
-            if dataset_cfg['dataset_name'] == "VN_SIGN":
-                print("Label: ",os.path.join(base_url,f"{dataset_cfg['label_folder']}/{split}_{dataset_cfg['data_type']}.csv"))
-                self.train_labels = pd.read_csv(os.path.join(base_url,f"{dataset_cfg['label_folder']}/{split}_{dataset_cfg['data_type']}.csv"),sep=',')
+            label_path = os.path.join(base_url, f"{dataset_cfg['label_folder']}/{split}_{dataset_cfg['data_type']}.csv")
+            print("Label: ", label_path)
+            self.train_labels = pd.read_csv(label_path, sep=',')
         else:
             print("Use labels from K-Fold")
             self.train_labels = train_labels
+
+        # Normalize common CSV schemas into [video_name, label_id] columns.
+        if 'file_name' in self.train_labels.columns and 'label_id' in self.train_labels.columns:
+            self.train_labels = self.train_labels.rename(columns={'file_name': 'name', 'label_id': 'label'})
+        elif 'video path' in self.train_labels.columns and 'gloss label ID' in self.train_labels.columns:
+            self.train_labels = self.train_labels.rename(columns={'video path': 'name', 'gloss label ID': 'label'})
+
+        if 'name' not in self.train_labels.columns or 'label' not in self.train_labels.columns:
+            raise ValueError(
+                "Label CSV must contain either [name,label], [file_name,label_id], or [video path,gloss label ID]."
+            )
+
         print(split,len(self.train_labels))
         self.split = split
         if split == 'train':
@@ -26,7 +38,30 @@ class UFOneView_Dataset(Dataset):
         self.base_url = base_url
         self.data_cfg = dataset_cfg
         self.data_name = dataset_cfg['dataset_name']
+        self.video_root = self._resolve_video_root(base_url, dataset_cfg)
         self.transform = self.build_transform(split)
+
+    def _resolve_video_root(self, base_url, dataset_cfg):
+        configured_video_folder = dataset_cfg.get('video_folder')
+        if configured_video_folder:
+            if os.path.isabs(configured_video_folder):
+                return configured_video_folder
+            return os.path.join(base_url, configured_video_folder)
+
+        dataset_name = dataset_cfg.get('dataset_name', '')
+        parent = os.path.dirname(base_url.rstrip('/\\'))
+        candidates = [
+            os.path.join(base_url, 'videos'),
+            os.path.join(base_url, f'{dataset_name}_videos'),
+            os.path.join(parent, f'{dataset_name}_videos'),
+            os.path.join(base_url, 'MultiVSL200_videos'),
+            os.path.join(parent, 'MultiVSL200_videos'),
+            base_url,
+        ]
+        for path in candidates:
+            if os.path.isdir(path):
+                return path
+        return os.path.join(base_url, 'videos')
         
     def build_transform(self, split):
         if split == 'train':
@@ -51,8 +86,13 @@ class UFOneView_Dataset(Dataset):
     def read_videos(self,name):
         index_setting = self.data_cfg['transform_cfg'].get('index_setting', ['consecutive','pad','central','pad'])
         clip = []
-        if self.data_cfg['dataset_name'] == "VN_SIGN":
-            path = f'{self.base_url}/videos/{name}' 
+        path = name
+        if not os.path.isabs(path):
+            path = os.path.join(self.video_root, name)
+
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Video not found: {path}")
+
         vr = VideoReader(path,width=320, height=256)
         # print(path)
         sys.stdout.flush()
@@ -76,8 +116,9 @@ class UFOneView_Dataset(Dataset):
         name,label = data[0],data[1]
 
         clip = self.read_videos(name)
-        
-        return clip, torch.tensor(label)
+
+        # Keep output schema compatible with collate functions.
+        return clip, str(name), torch.tensor(label)
 
     
     def __len__(self):

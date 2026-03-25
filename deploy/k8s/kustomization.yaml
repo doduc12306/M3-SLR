@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: m3-slr
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml
+images:
+  - name: ghcr.io/doduc12306/m3-slr
+    newName: ghcr.io/doduc12306/m3-slr
+    newTag: latest
