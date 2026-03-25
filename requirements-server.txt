@@ -1,16 +1,23 @@
-decord==0.6.0
-einops==0.8.0
-fastapi==0.115.12
-numpy==1.26.4
-opencv-python==4.9.0.80
-pandas==2.2.2
-Pillow==10.4.0
-pytorch_lightning==2.4.0
-python-multipart==0.0.20
-PyYAML==6.0.2
-scipy==1.14.1
-timm==0.9.16
+# --- Core Deep Learning & Computer Vision ---
 torch==2.1.2
 torchvision==0.16.2
+timm==0.9.16
 transformers==4.37.2
+pytorch_lightning==2.4.0
+decord==0.6.0
+einops==0.8.0
+opencv-python==4.9.0.80
+
+# --- Data Processing & Math ---
+numpy==1.26.4
+pandas==2.2.2
+scipy==1.14.1
+scikit-learn==1.5.0
+Pillow==10.4.0
+PyYAML==6.0.2
+
+# --- Web Server (FastAPI Deployment) ---
+fastapi==0.115.12
 uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+pydantic==2.8.2
