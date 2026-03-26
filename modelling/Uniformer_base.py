@@ -401,7 +401,9 @@ class Uniformer(nn.Module):
             
     def get_pretrained_model(self, cfg):
         if cfg.UNIFORMER.PRETRAIN_NAME:
-            checkpoint = torch.load(model_path[cfg.UNIFORMER.PRETRAIN_NAME], map_location='cpu')
+            pretrain_ref = cfg.UNIFORMER.PRETRAIN_NAME
+            checkpoint_path = model_path.get(pretrain_ref, pretrain_ref)
+            checkpoint = torch.load(checkpoint_path, map_location='cpu')
             if 'model' in checkpoint:
                 checkpoint = checkpoint['model']
             elif 'model_state' in checkpoint:

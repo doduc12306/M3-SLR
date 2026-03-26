@@ -393,7 +393,7 @@ class UFThreeView(nn.Module):
             
 
 class UsimKD(nn.Module):
-    def __init__(self, num_classes=199, embed_size=512, pretraiend=True, pretrained_name=None, device=None, **kwargs):
+    def __init__(self, num_classes=199, embed_size=512, pretraiend=True, pretrained_name=None, teacher_checkpoint=None, device=None, **kwargs):
         super().__init__()
         self.teacher = UFThreeView(
             num_classes=num_classes,
@@ -406,7 +406,7 @@ class UsimKD(nn.Module):
             maskFeat=False,
             device=device
         )
-        ckpt_path = ""
+        ckpt_path = teacher_checkpoint or "cp_tec.pth"
         self.teacher.load_state_dict(torch.load(ckpt_path,map_location='cpu'))
         for param in self.teacher.parameters():
             param.requires_grad = False

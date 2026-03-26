@@ -48,9 +48,9 @@ training:
   lr_scheduler: StepLR
   top_k: 5
   print_stats: true
-  pretrained: true
-  # Checkpoint chính cho toàn bộ hệ thống
-  pretrained_model: "C:/Users/Duc Do/Downloads/M3-SLR/best_checkpoints.pth"
+  pretrained: false
+  # UsimKD sẽ dùng 2 checkpoint riêng trong thư mục gốc dự án
+  pretrained_model: null
   lr_step_size: 10
   gamma: 0.8
   num_accumulation_steps: 4
@@ -70,5 +70,7 @@ model:
   embed_size: 512
   # Quan trọng: Giữ nguyên lỗi chính tả 'pretraiend' của tác giả để code nhận diện
   pretraiend: True
-  # Giải quyết lỗi FileNotFoundError: '' bằng cách trỏ đường dẫn Teacher vào đây
-  pretrained_name: "C:/Users/Duc Do/Downloads/M3-SLR/best_checkpoints.pth"
+  # Student checkpoint (one-view) sẽ được copy vào thư mục gốc M3-SLR
+  pretrained_name: "cp_std.pth"
+  # Teacher checkpoint (three-view) sẽ được copy vào thư mục gốc M3-SLR
+  teacher_checkpoint: "cp_tec.pth"
