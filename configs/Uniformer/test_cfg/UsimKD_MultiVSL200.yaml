@@ -1,9 +1,9 @@
 task: ISLR
 data:
-  model_name: UFOneView
-  # Đường dẫn dữ liệu trên máy bạn
-  base_url: "C:/Users/Duc Do/Downloads/M3-SLR/data/vsl"
-  dataset_name: VN_SIGN
+  model_name: UsimKD
+  # Dùng đường dẫn tương đối để chạy được cả local và server
+  base_url: data
+  dataset_name: MultiVSL200
   temporal_stride: 2
   num_output_frames: 16
   crop_two_hand: False
@@ -19,7 +19,7 @@ data:
     NORM_STD_IMGNET: [0.229, 0.224, 0.225]
   SHOULDER_DIST_EPSILON: 1.2
   WRIST_DELTA: 0.15
-  label_folder: label1-200/label/labelThreeView
+  label_folder: MultiVSL200/labelThreeView
   data_type: labels
 
 training:
