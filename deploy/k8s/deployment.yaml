@@ -23,12 +23,19 @@ spec:
             - /bin/sh
             - -c
           args:
-            - mkdir -p /app/model; if [ -f /app/best_checkpoints.pth ]; then ln -sf /app/best_checkpoints.pth /app/model/best_checkpoints.pth; fi; uvicorn app.server:app --host 0.0.0.0 --port 8000
+            - uvicorn app.server:app --host 0.0.0.0 --port 8000
           ports:
             - containerPort: 8000
+          volumeMounts:
+            - name: cp-std
+              mountPath: /app/cp_std.pth
+              readOnly: true
+            - name: cp-tec
+              mountPath: /app/cp_tec.pth
+              readOnly: true
           env:
             - name: MODEL_CONFIG
-              value: configs/deploy/UFOneView_MultiVSL200_server.yaml
+              value: configs/Uniformer/test_cfg/UsimKD_MultiVSL200.yaml
             - name: LOOKUP_TABLE
               value: data/MultiVSL200/lookuptable.csv
             - name: MODEL_DEVICE
@@ -54,3 +61,12 @@ spec:
               port: 8000
             initialDelaySeconds: 30
             periodSeconds: 20
+      volumes:
+        - name: cp-std
+          hostPath:
+            path: /home/bme/M3-SLR/cp_std.pth
+            type: File
+        - name: cp-tec
+          hostPath:
+            path: /home/bme/M3-SLR/cp_tec.pth
+            type: File
