@@ -126,16 +126,25 @@ class UFOneView_Dataset(Dataset):
     
 class UFThreeView_Dataset(Dataset):
     def __init__(self, base_url, split, dataset_cfg, **kwargs):
+        label_path = os.path.join(base_url, f"{dataset_cfg['label_folder']}/{split}_{dataset_cfg['data_type']}.csv")
+        print("Label: ", label_path)
+        self.train_labels = pd.read_csv(label_path, sep=',')
 
-        if dataset_cfg is None:
-            self.train_labels = pd.read_csv(os.path.join(base_url, f'{split}.csv'), sep=',')
-        else:
-            if dataset_cfg['dataset_name'] == "VN_SIGN":
-                print("Label: ",
-                      os.path.join(base_url, f"{dataset_cfg['label_folder']}/{split}_{dataset_cfg['data_type']}.csv"))
-                self.train_labels = pd.read_csv(
-                    os.path.join(base_url, f"{dataset_cfg['label_folder']}/{split}_{dataset_cfg['data_type']}.csv"),
-                    sep=',')
+        rename_map = {}
+        if 'center_path' in self.train_labels.columns:
+            rename_map['center_path'] = 'center'
+        if 'left_path' in self.train_labels.columns:
+            rename_map['left_path'] = 'left'
+        if 'right_path' in self.train_labels.columns:
+            rename_map['right_path'] = 'right'
+        if 'label_id' in self.train_labels.columns:
+            rename_map['label_id'] = 'label'
+        if rename_map:
+            self.train_labels = self.train_labels.rename(columns=rename_map)
+
+        required_cols = {'center', 'left', 'right', 'label'}
+        if not required_cols.issubset(set(self.train_labels.columns)):
+            raise ValueError("Label CSV for three-view must contain [center,left,right,label].")
 
         print(split, len(self.train_labels))
         self.split = split
@@ -146,7 +155,30 @@ class UFThreeView_Dataset(Dataset):
         self.base_url = base_url
         self.data_cfg = dataset_cfg
         self.data_name = dataset_cfg['dataset_name']
+        self.video_root = self._resolve_video_root(base_url, dataset_cfg)
         self.transform = self.build_transform(split)
+
+    def _resolve_video_root(self, base_url, dataset_cfg):
+        configured_video_folder = dataset_cfg.get('video_folder')
+        if configured_video_folder:
+            if os.path.isabs(configured_video_folder):
+                return configured_video_folder
+            return os.path.join(base_url, configured_video_folder)
+
+        dataset_name = dataset_cfg.get('dataset_name', '')
+        parent = os.path.dirname(base_url.rstrip('/\\'))
+        candidates = [
+            os.path.join(base_url, 'videos'),
+            os.path.join(base_url, f'{dataset_name}_videos'),
+            os.path.join(parent, f'{dataset_name}_videos'),
+            os.path.join(base_url, 'MultiVSL200_videos'),
+            os.path.join(parent, 'MultiVSL200_videos'),
+            base_url,
+        ]
+        for path in candidates:
+            if os.path.isdir(path):
+                return path
+        return os.path.join(base_url, 'videos')
 
     def build_transform(self, split):
         if split == 'train':
@@ -170,18 +202,17 @@ class UFThreeView_Dataset(Dataset):
         return transform
 
     def count_frames(self, video_path):
-        cap = cv2.VideoCapture(video_path)
-        # Đọc kích thước của video
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        cap.release()
-        return total_frames, width, height
+        vr = VideoReader(video_path, width=320, height=256)
+        return len(vr)
     
     def read_one_view(self,name, selected_index):
         clip = []
-        if self.data_cfg['dataset_name'] == "VN_SIGN":
-            path = f'{self.base_url}/videos/{name}'    
+        path = name
+        if not os.path.isabs(path):
+            path = os.path.join(self.video_root, name)
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Video not found: {path}")
+
         vr = VideoReader(path,width=320, height=256)
         # print(path)
         # sys.stdout.flush()
@@ -195,10 +226,14 @@ class UFThreeView_Dataset(Dataset):
 
     def read_videos(self, center, left, right):
         index_setting = self.data_cfg['transform_cfg'].get('index_setting', ['consecutive', 'pad', 'central', 'pad'])
-        #
-        vlen1, _, _ = self.count_frames(os.path.join(self.base_url, 'videos', center))
-        vlen2, _, _ = self.count_frames(os.path.join(self.base_url, 'videos', left))
-        vlen3, _, _ = self.count_frames(os.path.join(self.base_url, 'videos', right))
+
+        center_path = center if os.path.isabs(center) else os.path.join(self.video_root, center)
+        left_path = left if os.path.isabs(left) else os.path.join(self.video_root, left)
+        right_path = right if os.path.isabs(right) else os.path.join(self.video_root, right)
+
+        vlen1 = self.count_frames(center_path)
+        vlen2 = self.count_frames(left_path)
+        vlen3 = self.count_frames(right_path)
 
         min_vlen = min(vlen1, min(vlen2, vlen3))
         max_vlen = max(vlen1, max(vlen2, vlen3))
@@ -243,9 +278,8 @@ class UFThreeView_Dataset(Dataset):
 
     def __getitem__(self, idx):
         self.transform.randomize_parameters()
-        data = self.train_labels.iloc[idx].values
-
-        center, left, right, label = data[0], data[1], data[2], data[3]
+        row = self.train_labels.iloc[idx]
+        center, left, right, label = row['center'], row['left'], row['right'], row['label']
         rgb_left, rgb_center, rgb_right= self.read_videos(center, left, right)
 
         return rgb_left, rgb_center, rgb_right, torch.tensor(label)
