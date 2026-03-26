@@ -20,6 +20,8 @@ data:
   SHOULDER_DIST_EPSILON: 1.2
   WRIST_DELTA: 0.15
   label_folder: MultiVSL200/labelThreeView
+  # Thu muc chua file .mp4, mac dinh theo bo du lieu MultiVSL200 trong du an
+  video_folder: MultiVSL200_videos
   data_type: labels
 
 training:

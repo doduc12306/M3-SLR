@@ -70,7 +70,10 @@ def run_single_video_inference(model, cfg, video_path, device, top_k=5, lookup_t
 
     model.eval()
     with torch.no_grad():
-        outputs = model(clip=clip)
+        if cfg['data'].get('model_name') == 'UsimKD':
+            outputs = model(rgb_center=clip)
+        else:
+            outputs = model(clip=clip)
         logits = outputs['logits']
         probs = torch.softmax(logits, dim=-1)
         k = min(top_k, probs.shape[-1])

@@ -8,10 +8,31 @@ from dataset.videoLoader import get_selected_indexs,pad_index
 from decord import VideoReader
 from utils.video_augmentation import *
 
+
+def _resolve_label_csv_path(base_url, dataset_cfg, split):
+    label_dir = os.path.join(base_url, dataset_cfg['label_folder'])
+    data_type = dataset_cfg['data_type']
+    preferred = os.path.join(label_dir, f"{split}_{data_type}.csv")
+    if os.path.exists(preferred):
+        return preferred
+
+    # Common alias used in this repository: val <-> valid
+    aliases = {
+        'val': 'valid',
+        'valid': 'val',
+    }
+    alt_split = aliases.get(split)
+    if alt_split is not None:
+        alt = os.path.join(label_dir, f"{alt_split}_{data_type}.csv")
+        if os.path.exists(alt):
+            return alt
+
+    return preferred
+
 class UFOneView_Dataset(Dataset):
     def __init__(self, base_url,split,dataset_cfg,train_labels = None,**kwargs):
         if train_labels is None:
-            label_path = os.path.join(base_url, f"{dataset_cfg['label_folder']}/{split}_{dataset_cfg['data_type']}.csv")
+            label_path = _resolve_label_csv_path(base_url, dataset_cfg, split)
             print("Label: ", label_path)
             self.train_labels = pd.read_csv(label_path, sep=',')
         else:
@@ -126,7 +147,7 @@ class UFOneView_Dataset(Dataset):
     
 class UFThreeView_Dataset(Dataset):
     def __init__(self, base_url, split, dataset_cfg, **kwargs):
-        label_path = os.path.join(base_url, f"{dataset_cfg['label_folder']}/{split}_{dataset_cfg['data_type']}.csv")
+        label_path = _resolve_label_csv_path(base_url, dataset_cfg, split)
         print("Label: ", label_path)
         self.train_labels = pd.read_csv(label_path, sep=',')
 

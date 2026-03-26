@@ -80,7 +80,10 @@ class InferenceService:
         clip = self._preprocess_video(video_path)
 
         with torch.no_grad():
-            outputs = self.model(clip=clip)
+            if self.cfg["data"].get("model_name") == "UsimKD":
+                outputs = self.model(rgb_center=clip)
+            else:
+                outputs = self.model(clip=clip)
             logits = outputs["logits"]
             probs = torch.softmax(logits, dim=-1)
             k = min(top_k, probs.shape[-1])
